@@ -13,6 +13,9 @@
 # LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, 
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE 
 # OR OTHER DEALINGS IN THE SOFTWARE.
+#
+# 2020-08-07 - modified to work on IDA 7.x - Alexander Pick (alx@pwn.su)
+#
 
 ##############################################################################################
 # make_strings.py
@@ -32,25 +35,25 @@ string_end = [0x00]		# Possible "ending characters" for strings. A string will n
                                     # defined if it does not end with one of these characters
 ###########################################################
 
-start_addr = AskAddr(MinEA(), "Please enter the starting address for the data to be analyzed.")
-end_addr = AskAddr(MaxEA(), "Please enter the ending address for the data to be analyzed.")
+start_addr = ida_kernwin.ask_addr(ida_ida.inf_get_min_ea(), "Please enter the starting address for the data to be analyzed.")
+end_addr = ida_kernwin.ask_addr(ida_ida.inf_get_max_ea(), "Please enter the ending address for the data to be analyzed.")
 
 if ((start_addr is not None and end_addr is not None) and (start_addr != BADADDR and end_addr != BADADDR) and start_addr < end_addr):
 	string_start = start_addr
 	print "[make_strings.py] STARTING. Attempting to make strings with a minimum length of %d on data in range 0x%x to 0x%x" % (min_length, start_addr, end_addr)
-	num_strings = 0;
+	num_strings = 0
 	while string_start < end_addr:
 		num_chars = 0
 		curr_addr = string_start
 		while curr_addr < end_addr:
-			byte = Byte(curr_addr)
+			byte = idc.get_wide_byte(curr_addr)
 			if ((byte < 0x7F and byte > 0x1F) or byte in (0x9, 0xD, 0xA)):		# Determine if a byte is a "character" based on this ASCII range
 				num_chars += 1
 				curr_addr += 1			
 			else:
 				if ((byte in string_end) and (num_chars >= min_length)):
-					MakeUnknown(string_start, curr_addr - string_start, DOUNK_SIMPLE)
-					if (MakeStr(string_start, curr_addr) == 1):
+					ida_bytes.del_items(string_start, curr_addr - string_start, DELIT_SIMPLE)
+					if (ida_bytes.create_strlit(string_start, curr_addr, get_inf_attr(INF_STRTYPE)) == 1):
 						print "[make_strings.py] String created at 0x%x to 0x%x" % (string_start, curr_addr)
 						num_strings += 1
 						string_start = curr_addr

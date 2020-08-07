@@ -13,6 +13,9 @@
 # LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, 
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE 
 # OR OTHER DEALINGS IN THE SOFTWARE.
+#
+# 2020-08-07 - modified to work on IDA 7.x - Alexander Pick (alx@pwn.su)
+#
 
 ##############################################################################################
 # define_code_functions.py
@@ -60,6 +63,11 @@ elif processor_name == 'AVR':
 	smart_prolog = re.compile(r"push +r")
 	smart_epilog = re.compile(r"reti{0,1}")
 
+elif processor_name == 'RH850':
+	# RH850
+	smart_prolog = re.compile(r"prepare \{.*\}, \d")
+	smart_epilog = re.compile(r"dispose \d, \{*.\}, [lp]")
+
 else:
 	print "[define_code_functions.py] UNSUPPORTED PROCESSOR. Processor = %s is unsupported. Exiting." % processor_name
 	raise NotImplementedError('Unsupported Processor Type.')
@@ -67,22 +75,23 @@ else:
 print "[define_code_functions.py] Processor = %s -- Reg Expressions Selected. Proceeding." % processor_name
 ############################################################
 
-start_addr = AskAddr(MinEA(), "Please enter the starting address for the data to be defined.")
-end_addr = AskAddr(MaxEA(), "Please enter the ending address for the data to be defined.")
+start_addr = ida_kernwin.ask_addr(ida_ida.inf_get_min_ea(), "Please enter the starting address for the data to be defined.")
+end_addr = ida_kernwin.ask_addr(ida_ida.inf_get_max_ea(), "Please enter the ending address for the data to be defined.")
 
 if ((start_addr is not None and end_addr is not None) and (start_addr != BADADDR and end_addr != BADADDR)):
-	do_make_unk = AskYN(0, "Do you want to make all of the code block UNKNOWN first?")
+	do_make_unk = ida_kernwin.ask_yn(0, "Do you want to make all of the code block UNKNOWN first?")
 	if (do_make_unk == 1):
 		curr_addr = start_addr
 		while (curr_addr < end_addr):
-			MakeUnkn(curr_addr,idc.DOUNK_SIMPLE)
+			ida_bytes.del_items(curr_addr,idc.DELIT_SIMPLE)
 			curr_addr += 1
 	if (do_make_unk != -1):
 		curr_addr = start_addr
 		print "[make_code_functions.py] Running script to define code and functions on 0x%x to 0x%x" % (start_addr, end_addr)
 		while (curr_addr < end_addr):
-			next_unexplored = FindUnexplored(curr_addr, idaapi.BIN_SEARCH_FORWARD)
-			MakeCode(next_unexplored)		# We don't care whether it succeeds or fails so not storing retval
+			next_unexplored = ida_search.find_unknown(curr_addr, idaapi.SEARCH_DOWN)
+			#print "0x%x" % next_unexplored
+			idc.create_insn(next_unexplored)		# We don't care whether it succeeds or fails so not storing retval
 			curr_addr = next_unexplored
 
 		# Finished attempting to make all unexplored bytes into code
@@ -90,15 +99,16 @@ if ((start_addr is not None and end_addr is not None) and (start_addr != BADADDR
 		print "[make_code_functions.py] Completed attempting to define bytes as code. Now trying to define functions."
 		curr_addr = start_addr
 		while (curr_addr != BADADDR and curr_addr < end_addr):
-			if (isCode(GetFlags(curr_addr)) and GetFunctionAttr(curr_addr, FUNCATTR_START) == BADADDR):
+			if (ida_bytes.is_code(ida_bytes.get_full_flags(curr_addr)) and idc.get_func_attr(curr_addr, FUNCATTR_START) == BADADDR):
 					#print "Function Stuffs 0x%0x" % curr_addr
-					if(smart_prolog.match(GetDisasm(curr_addr)) or smart_epilog.match(GetDisasm(PrevHead(curr_addr)))):
+					if(smart_prolog.match(idc.generate_disasm_line(curr_addr, 0)) or smart_epilog.match(idc.generate_disasm_line(idc.prev_head(curr_addr), 0))):
+						#generate_disasm has a force parameter but we are not using it for now
 						#print "Smart Prolog match"
-						if (MakeFunction(curr_addr) != 0):	
+						if (ida_funcs.add_func(curr_addr) != 0):	
 							# MakeFunction(curr_addr) was successful so set curr_addr to next addr after the new function
-							curr_addr = GetFunctionAttr(curr_addr, FUNCATTR_END)	# Returns first address AFTER the end of the function
+							curr_addr = idc.get_func_attr(curr_addr, FUNCATTR_END)	# Returns first address AFTER the end of the function
 							continue
-			curr_addr = NextHead(curr_addr)
+			curr_addr = idc.next_head(curr_addr)
 else:
 	print "[make_code_functions.py] Quitting. Entered address values are not valid."
 	

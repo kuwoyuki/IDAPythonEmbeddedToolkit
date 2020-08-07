@@ -13,6 +13,9 @@
 # LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, 
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE 
 # OR OTHER DEALINGS IN THE SOFTWARE.
+#
+# 2020-08-07 - modified to work on IDA 7.x - Alexander Pick (alx@pwn.su)
+#
 
 ##############################################################################################
 # label_funcs_with_no_xrefs.py
@@ -38,33 +41,33 @@ ignore_addrs = (0x0, 0x8, 0x18)
 ###########################################################
 			
 def addPrefixToFunctionName(prefix, functionAddr):
-	name = GetFunctionName(curr_addr)
+	name = idc.get_func_name(curr_addr)
 	if (name and not name.startswith(prefix)):
 		name = prefix + name
 		print ("[label_funcs_with_no_xrefs.py] Function 0x%x Name: " % curr_addr) + name
-		MakeName(curr_addr, name)
+		idc.set_name(curr_addr, name, SN_CHECK)
 
-start_addr = AskAddr(MinEA(), "Please enter the starting address for the functions to be examined.")
-end_addr = AskAddr(MaxEA(), "Please enter the ending address for the functions to be examined.")
+start_addr = ida_kernwin.ask_addr(ida_ida.inf_get_min_ea(), "Please enter the starting address for the functions to be examined.")
+end_addr = ida_kernwin.ask_addr(ida_ida.inf_get_max_ea(), "Please enter the ending address for the functions to be examined.")
 
 if ((start_addr is not None and end_addr is not None) and (start_addr != BADADDR and end_addr != BADADDR) and start_addr < end_addr):
 	print "[label_funcs_with_no_xrefs.py] Running on addresses 0x%x to 0x%x" % (start_addr, end_addr)
 	
 	# If start_addr is in a function, get the starting address of that function. Else, returns -1.
-	curr_addr = GetFunctionAttr(start_addr, FUNCATTR_START) # Get the function head for the "start" addr
+	curr_addr = idc.get_func_attr(start_addr, FUNCATTR_START) # Get the function head for the "start" addr
 	if (curr_addr == BADADDR):
 		# start_addr is not currently in a function so select the beginning of the next function
-		curr_addr = NextFunction(start_addr)
+		curr_addr = idc.get_next_func(start_addr)
 	
 	# Using this to continually iterate through all functions until no new functions 
 	# having no code reference paths are found. 
 	new_noXrefs_found = False
 	while (curr_addr != BADADDR and curr_addr < end_addr):
-		if (curr_addr not in ignore_addrs and (not GetFunctionName(curr_addr).startswith("noXrefs_"))):
+		if (curr_addr not in ignore_addrs and (not idc.get_func_name(curr_addr).startswith("noXrefs_"))):
 			xrefs = XrefsTo(curr_addr)
 			has_valid_xref = False;
 			for x in xrefs:
-				if (not GetFunctionName(x.frm).startswith("noXrefs_")):	
+				if (not idc.get_func_name(x.frm).startswith("noXrefs_")):	
 					# Function has a valid cross-reference and is not "dead code"
 					has_valid_xref = True;
 					break;
@@ -72,12 +75,12 @@ if ((start_addr is not None and end_addr is not None) and (start_addr != BADADDR
 				# No valid xrefs were found to this function
 				new_noXrefs_found = True
 				addPrefixToFunctionName("noXrefs_", curr_addr)
-			curr_addr = NextFunction(curr_addr)
+			curr_addr = idc.get_next_func(curr_addr)
 			if ((curr_addr == BADADDR or curr_addr >= end_addr) and new_noXrefs_found):
 				print "[label_funcs_with_no_xrefs.py] Iterating through range again because new functions with no Xrefs found."
 				curr_addr = start_addr
 				new_noXrefs_found = False
-		curr_addr = NextFunction(curr_addr)	
+		curr_addr = idc.get_next_func(curr_addr)	
 	print "[label_funcs_with_no_xrefs.py] FINISHED."
 else:
 	print "[label_funcs_with_no_xrefs.py] QUITTING. Invalid address(es) entered."

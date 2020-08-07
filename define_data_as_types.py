@@ -13,6 +13,9 @@
 # LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, 
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE 
 # OR OTHER DEALINGS IN THE SOFTWARE.
+#
+# 2020-08-07 - modified to work on IDA 7.x - Alexander Pick (alx@pwn.su)
+#
 
 ##############################################################################################
 # define_data_as_types.py
@@ -31,27 +34,29 @@
 ##############################################################################################
 
 def define_as_data_by_size_for_block(start_addr, end_addr, data_size):
-	curr_addr = start_addr;
+	curr_addr = start_addr
 	while (curr_addr < end_addr):
 		if (data_size == 1):
-			MakeByte(curr_addr)
+			ida_bytes.create_data(curr_addr, FF_BYTE, 1, ida_idaapi.BADADDR)
 		elif (data_size == 2):
-			MakeWord(curr_addr)
+			ida_bytes.create_data(curr_addr, FF_WORD, 2, ida_idaapi.BADADDR)
 		elif (data_size == 4):
-			MakeDword(curr_addr)
+			ida_bytes.create_data(curr_addr, FF_DWORD, 3, ida_idaapi.BADADDR)
+		elif (data_size == 8):
+			ida_bytes.create_data(curr_addr, FF_QWORD, 4, ida_idaapi.BADADDR)
 		else:
 			Warning("Invalid data_size. Breaking.")
-			break;
+			break
 		curr_addr += data_size
 
-start_addr = AskAddr(MinEA(), "Please enter the starting address for the data to be defined.")
-end_addr = AskAddr(MaxEA(), "Please enter the ending address for the data to be defined.")
+start_addr = ida_kernwin.ask_addr(ida_ida.inf_get_min_ea(), "Please enter the starting address for the data to be defined.")
+end_addr = ida_kernwin.ask_addr(ida_ida.inf_get_max_ea(),  "Please enter the ending address for the data to be defined.")
 
 if ((start_addr is not None and end_addr is not None) and (start_addr != BADADDR and end_addr != BADADDR) and start_addr < end_addr):
-	data_size = AskLong(1, "Enter the size of each data item to be defined in the address block.\nExample: '1' for byte, '2' for word, '4' for dword\nNote the exact implementation will be dependent on architecture.")
-	if (data_size == 1 or data_size ==  2 or data_size == 4):
+	data_size = ida_kernwin.ask_long(1, "Enter the size of each data item to be defined in the address block.\nExample: '1' for byte, '2' for word, '4' for dword, '8' for qword\nNote the exact implementation will be dependent on architecture.")
+	if (data_size == 1 or data_size ==  2 or data_size == 4 or data_size == 8):
 		print ("[define_data_as_types.py] STARTING. start_addr: 0x%X, end_addr: 0x%X, data_size: %d" % (start_addr, end_addr, data_size))
-		MakeUnknown(start_addr, (end_addr - start_addr), DOUNK_SIMPLE)
+		ida_bytes.del_items(start_addr, (end_addr - start_addr), DELIT_SIMPLE)
 		print "[define_data_as_types.py] Undefined all data between 0x%X and 0x%0X" % (start_addr, end_addr)
 		print "[define_data_as_types.py] Defining all data as size " + str(data_size) 
 		define_as_data_by_size_for_block(start_addr, end_addr, data_size)
