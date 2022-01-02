@@ -35,7 +35,7 @@ import idaapi
 # If the architecture does not dictate how to start or end a function use r".*" to allow
 # for any instruction
 
-processor_name = idaapi.get_inf_structure().procName
+processor_name = idaapi.get_inf_structure().procname
 
 
 if processor_name == '8051':
@@ -67,6 +67,11 @@ elif processor_name == 'RH850':
 	# RH850
 	smart_prolog = re.compile(r"prepare \{.*\}, \d")
 	smart_epilog = re.compile(r"dispose \d, \{*.\}, [lp]")
+
+elif processor_name == 'ARM':
+	# ARM
+	smart_prolog = re.compile(r"push \{R4,LR\}")
+	smart_epilog = re.compile(r"pop \{R4,PC\}")
 
 else:
 	print "[define_code_functions.py] UNSUPPORTED PROCESSOR. Processor = %s is unsupported. Exiting." % processor_name
