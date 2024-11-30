@@ -15,6 +15,7 @@
 # OR OTHER DEALINGS IN THE SOFTWARE.
 #
 # 2020-08-07 - modified to work on IDA 7.x - Alexander Pick (alx@pwn.su)
+# 2024-12-01 - modified to work on IDA 9.x - kuwoyuki (kuwoyuki@cock.li)
 #
 
 ##############################################################################################

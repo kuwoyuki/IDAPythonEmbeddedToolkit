@@ -15,6 +15,7 @@
 # OR OTHER DEALINGS IN THE SOFTWARE.
 #
 # 2020-08-07 - modified to work on IDA 7.x - Alexander Pick (alx@pwn.su)
+# 2024-12-01 - modified to work on IDA 9.x - kuwoyuki (kuwoyuki@cock.li)
 #
 
 ##############################################################################################
@@ -99,7 +100,6 @@ def make_strings(start_addr, end_addr):
 
 
 def main():
-    """Main function to get user input and run string detection."""
     start_addr = ida_kernwin.ask_addr(
         ida_ida.inf_get_min_ea(),
         "Please enter the starting address for the data to be analyzed.",
